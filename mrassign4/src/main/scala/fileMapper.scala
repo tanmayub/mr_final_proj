@@ -45,7 +45,6 @@ object aa {
       if (a.equalsIgnoreCase("X") || (a.toDouble > 0)) return 1.0
       return 0.0
     }
-
     var conf = new SparkConf().setAppName("DecisionTreeRegressionExample")
     var sc = new SparkContext(conf)
     var csv: RDD[Seq[String]] = sc.textFile(args(0)).map(_.split(","));
@@ -73,44 +72,67 @@ object aa {
         return Vectors.sparse(21, x.toArray, y.toArray)
     }
 
-    val transformedCsv = csvFeatures.
-      filter(a => (!a(0).equals("?"))).
-      map(a => LabeledPoint(binaryPart(a(0)),
-        genVector(a.slice(1, a.size - 1))))
+    if(args(0).equalsIgnoreCase("--predict")){
+      csvFeatures.persist()
+      val actionableVectors = csvFeatures.map(a => genVector(a.slice(1, a.size - 1)))
+      val model = RandomForestModel.load(sc, args(1) + "/output.tree")
+      var finalPredictions = ListBuffer[Double]()
+      actionableVectors.map(a => model.predict(a)).map(a => {
+        finalPredictions += a;
+      })
+      var finalOutToWrite = ListBuffer[String]()
+      finalOutToWrite += "SAMPLING_EVENT_ID, SAW_AGELAIUS_PHOENICEUS"
+      var y: RDD[Seq[String]] = sc.textFile(args(0)).map(_.split(","))
+      var xsv = y.mapPartitionsWithIndex { (idx, iter) => if (idx == 0) iter.drop(1) else iter }
+
+      var z = xsv.map(a => a(0)).collect()
+
+      z.zip(finalPredictions).map( (b, n) => 
 
 
-    val numClasses = 2
-    val categoricalFeaturesInfo = Map[Int, Int]()
-    val numTrees = 20
-    // Use more in practice.
-    val featureSubsetStrategy = "auto"
-    // Let the algorithm choose.
-    val impurity = "gini"
-    val maxDepth = 25
-    val maxBins = 32
 
-    val temp = transformedCsv.randomSplit(Array(0.7, 0.3))
-    val (trainingData, testData) = (temp(0), temp(1))
-    trainingData.persist()
-    testData.persist()
-
-    //model is not an RDD, it is not re-calculated.
-
-    val model = RandomForest.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo,
-      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
-
-    val labelAndPreds = testData.map { point =>
-      val prediction = model.predict(point.features)
-      (point.label, prediction)
     }
+    else {
+
+      val transformedCsv = csvFeatures.
+        filter(a => (!a(0).equals("?"))).
+        map(a => LabeledPoint(binaryPart(a(0)),
+          genVector(a.slice(1, a.size - 1))))
 
 
+      val numClasses = 2
+      val categoricalFeaturesInfo = Map[Int, Int]()
+      val numTrees = 20
+      // Use more in practice.
+      val featureSubsetStrategy = "auto"
+      // Let the algorithm choose.
+      val impurity = "gini"
+      val maxDepth = 25
+      val maxBins = 32
 
-    val testErr = labelAndPreds.filter(r => r._1 != r._2).count().toDouble / testData.count()
-    model.save(sc, args(1) + "/output.tree")
-    System.out.println("Accuracy = " + (1 - testErr) * 100)
-    System.out.println("Learned classification forest model:\n" + model.toDebugString)
-    sc.stop();
+      val temp = transformedCsv.randomSplit(Array(0.7, 0.3))
+      val (trainingData, testData) = (temp(0), temp(1))
+      trainingData.persist()
+      testData.persist()
+
+      //model is not an RDD, it is not re-calculated.
+
+      val model = RandomForest.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo,
+        numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+
+      val labelAndPreds = testData.map { point =>
+        val prediction = model.predict(point.features)
+        (point.label, prediction)
+      }
+
+
+      val testErr = labelAndPreds.filter(r => r._1 != r._2).count().toDouble / testData.count()
+      model.save(sc, args(1) + "/output.tree")
+      System.out.println("Accuracy = " + (1 - testErr) * 100)
+      System.out.println("Learned classification forest model:\n" + model.toDebugString)
+    }
+      sc.stop();
+
   }
 
 }
