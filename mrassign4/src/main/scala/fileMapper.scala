@@ -87,10 +87,13 @@ object aa {
 
       var z = xsv.map(a => a(0)).collect()
 
-      z.zip(finalPredictions).map( (b, n) => 
+      z.zip(finalPredictions).map{
+        a => {
+          finalOutToWrite += a._1 + "," + a._2.toString;
+        }
+      }
 
-
-
+      sc.makeRDD(finalOutToWrite).saveAsTextFile(args(1) + "/predicted_out.csv")
     }
     else {
 
