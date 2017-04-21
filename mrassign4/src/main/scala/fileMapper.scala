@@ -106,7 +106,7 @@ object aa {
 
 
 
-    val testErr = labelAndPreds.filter(r => r._1 != r._2).count().toDouble / testData.persist().count()
+    val testErr = labelAndPreds.filter(r => r._1 != r._2).count().toDouble / testData.count()
     model.save(sc, args(1) + "/output.tree")
     System.out.println("Accuracy = " + (1 - testErr) * 100)
     System.out.println("Learned classification forest model:\n" + model.toDebugString)
