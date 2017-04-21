@@ -46,9 +46,9 @@ object aa {
       return 0.0
     }
 
-    var conf = new SparkConf().setAppName("DecisionTreeRegressionExample").setMaster("local[*]")
+    var conf = new SparkConf().setAppName("DecisionTreeRegressionExample")
     var sc = new SparkContext(conf)
-    var csv: RDD[Seq[String]] = sc.textFile("input/labeled.csv").map(_.split(","));
+    var csv: RDD[Seq[String]] = sc.textFile(args(0)).map(_.split(","));
     csv = csv.mapPartitionsWithIndex { (idx, iter) => if (idx == 0) iter.drop(1) else iter }
     var csvFeatures = csv.map(a => List(a(26),
       a(2), a(3), a(4), a(5), a(6), a(7),
@@ -86,12 +86,15 @@ object aa {
     val featureSubsetStrategy = "auto"
     // Let the algorithm choose.
     val impurity = "gini"
-    val maxDepth = 20
+    val maxDepth = 25
     val maxBins = 32
 
     val temp = transformedCsv.randomSplit(Array(0.7, 0.3))
     val (trainingData, testData) = (temp(0), temp(1))
-    trainingData.cache()
+    trainingData.persist()
+    testData.persist()
+
+    //model is not an RDD, it is not re-calculated.
 
     val model = RandomForest.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo,
       numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
@@ -101,9 +104,13 @@ object aa {
       (point.label, prediction)
     }
 
-    val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / testData.count()
+
+
+    val testErr = labelAndPreds.filter(r => r._1 != r._2).count().toDouble / testData.persist().count()
+    model.save(sc, args(1) + "/output.tree")
     System.out.println("Accuracy = " + (1 - testErr) * 100)
     System.out.println("Learned classification forest model:\n" + model.toDebugString)
+    sc.stop();
   }
 
 }
