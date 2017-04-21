@@ -48,16 +48,14 @@ object aa {
 
     var conf = new SparkConf().setAppName("DecisionTreeRegressionExample").setMaster("local[*]")
     var sc = new SparkContext(conf)
-    var csv: RDD[Seq[String]] = sc.textFile("input/xaa.csv").map(_.split(","));
+    var csv: RDD[Seq[String]] = sc.textFile("input/labeled.csv").map(_.split(","));
     csv = csv.mapPartitionsWithIndex { (idx, iter) => if (idx == 0) iter.drop(1) else iter }
     var csvFeatures = csv.map(a => List(a(26),
-      a(2), a(3),
-      a(5), a(7), a(6),
+      a(2), a(3), a(4), a(5), a(6), a(7),
       a(12), a(13), a(14),
       a(16),
-      a(955), a(958), a(957), a(956),
-      a(964), a(965),
-      a(967)));
+      a(955), a(958), a(957), a(956), a(959), a(960),
+      a(962), a(963), a(964), a(965), a(966), a(967)))
 
 
     def genVector(a : Seq[String]): org.apache.spark.mllib.linalg.Vector ={
@@ -72,7 +70,7 @@ object aa {
             System.out.println(a.toString())
 
 
-        return Vectors.sparse(20, x.toArray, y.toArray)
+        return Vectors.sparse(21, x.toArray, y.toArray)
     }
 
     val transformedCsv = csvFeatures.
@@ -83,12 +81,12 @@ object aa {
 
     val numClasses = 2
     val categoricalFeaturesInfo = Map[Int, Int]()
-    val numTrees = 12
+    val numTrees = 20
     // Use more in practice.
     val featureSubsetStrategy = "auto"
     // Let the algorithm choose.
     val impurity = "gini"
-    val maxDepth = 16
+    val maxDepth = 20
     val maxBins = 32
 
     val temp = transformedCsv.randomSplit(Array(0.7, 0.3))
