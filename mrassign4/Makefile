@@ -1,18 +1,21 @@
-spark.root=/home/surana/MR/spark/spark-2.1.0-bin-hadoop2.7/
-jar.name=aa-1.0.jar
+spark.root=/usr/local/spark-2.1.0-bin-hadoop2.7
+jar.name=aa-1.0-jar-with-dependencies.jar
 jar.path=target/${jar.name}
 job.name=aa
 local.input=input
 local.output=output
 local.log=log
-hdfs.user.name=Pranay
-hdfs.input=input2
-hdfs.output=output2
+anatype.type=train
+# Pseudo-Cluster Execution
+hdfs.user.name=tanmay
+hdfs.input=input
+hdfs.output=output
+# AWS EMR Execution
 aws.emr.release=emr-5.2.1
-aws.region=us-east-1
-aws.bucket.name=1io0p1211
-aws.subnet.id=subnet-7e231137
-aws.input=input
+aws.region=us-west-2
+aws.bucket.name=mapreduceclassnew1
+aws.subnet.id=subnet-9ef6d7c6
+aws.input=input1
 aws.output=output
 aws.log.dir=log
 aws.num.nodes=10
@@ -61,11 +64,11 @@ upload-app-aws:
 # Main EMR launch.
 cloud: jar upload-app-aws delete-output-aws
 	aws emr create-cluster \
-		--name "PageRankDriver" \
+		--name "MrProjClassifier" \
 		--release-label ${aws.emr.release} \
 		--instance-groups '[{"InstanceCount":${aws.num.nodes},"InstanceGroupType":"CORE","InstanceType":"${aws.instance.type}"},{"InstanceCount":1,"InstanceGroupType":"MASTER","InstanceType":"${aws.instance.type}"}]' \
 	    --applications Name=Spark \
-	    --steps '[{"Name":"Spark Program", "Args":["--class", "${job.name}", "--master", "yarn", "--deploy-mode", "cluster", "s3://${aws.bucket.name}/${jar.name}", "s3://${aws.bucket.name}/${aws.input}","s3://${aws.bucket.name}/${aws.output}"],"Type":"Spark","Jar":"s3://${aws.bucket.name}/${jar.name}","ActionOnFailure":"TERMINATE_CLUSTER"}]' \
+	    --steps '[{"Name":"Spark Program", "Args":["--class", "${job.name}", "--master", "yarn", "--deploy-mode", "cluster", "s3://${aws.bucket.name}/${jar.name}", "${anatype.type}", "s3://${aws.bucket.name}/${aws.input}","s3://${aws.bucket.name}/${aws.output}"],"Type":"Spark","Jar":"s3://${aws.bucket.name}/${jar.name}","ActionOnFailure":"TERMINATE_CLUSTER"}]' \
 		--log-uri s3://${aws.bucket.name}/${aws.log.dir} \
 		--service-role EMR_DefaultRole \
 		--ec2-attributes InstanceProfile=EMR_EC2_DefaultRole,SubnetId=${aws.subnet.id} \
